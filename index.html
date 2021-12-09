@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Physics</title>
+</head>
+<style type="text/css">
+	canvas {
+		padding-left: 0;
+	    padding-right: 0;
+	    margin-left: auto;
+	    margin-right: auto;
+	    display: block;
+	}
+</style>
+<body>
+	<canvas id="canvas" style="border: 1px solid" width="600" height="600"></canvas>
+</body>
+<script type="text/javascript">
+	// Classes:
+	class Vector {
+		constructor(x,y) {
+			this.x=x;this.y=y;
+		}
+		add(v) {
+			return new Vector(v.x + this.x,v.y + this.y);
+		}
+		mult(scalar) {
+			return new Vector(this.x * scalar, this.y * scalar)
+		}
+		mag() {
+			return Math.sqrt(this.x*this.y+this.y*this.y);
+		}
+	}
+	var c = 400;
+	var k = 65;
+	var b = 0;
+
+	var springPlace = new Vector(300, 100);
+	var eqLength = 100;
+	var time = 0;
+	var customForce = function (vel, pos, t) {
+		//vel.mult(-0.1).add(0.1)
+		var displacement = pos.add(springPlace.mult(-1));
+		var total = displacement.mult((displacement.mag()-eqLength)/displacement.mag());
+		return total.mult(-k).add(vel.mult(-b));
+	}
+	// Initial conditions:
+	var p0 = new Vector(300, 250);
+	var v0 = new Vector(0, 0);
+	var a0 = new Vector(0, 0);
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	var ball = {
+		mass: 10,
+		pos: p0,
+		vel: v0,
+		acc: a0,
+		forces: [],
+		radius: 10,
+		color: 'lightblue',
+		draw: function() {
+			ctx.beginPath();
+			ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI*2, true);
+			ctx.closePath();
+			ctx.fillStyle = this.color;
+			ctx.fill();
+		}
+	};
+	function useForce(b, f) {
+		var gamma = Math.sqrt(1-(ball.vel.y*ball.vel.y/(c*c)));
+		b.acc = f.add(ball.vel.mult(-1/(c*c)*(f.y * ball.vel.y))).mult(1/(ball.mass*gamma));
+		//b.acc = f.mult(1/ball.mass)
+	}
+	useForce(ball, customForce(ball.vel, ball.pos));
+
+	var prevTime;
+	function draw(now) {
+		window.requestAnimationFrame(draw);
+		var gamma = Math.sqrt(1-(ball.vel.y*ball.vel.y/(c*c)));
+		delta = (now - prevTime) / 1000;
+
+		//////prevTime = now
+
+		prevTime = gamma*(now+ball.vel.y*ball.pos.y/(c*c));
+		if (isNaN(delta)) return;
+
+		ctx.clearRect(0, 0, canvas.width, canvas.height/2);
+		ball.draw();
+
+		//////ball.vel = ball.vel.add(ball.acc.mult(delta));
+		//////ball.pos = ball.pos.add(ball.vel.mult(delta));
+
+		ball.vel.y = (ball.vel.y + ball.acc.y * delta)/(1+(ball.acc.y*delta*ball.vel.y)/(c*c));
+		ball.pos.y = gamma * (ball.pos.y + ball.vel.y * delta);
+
+		//console.log(ball.vel.y/c);
+		////// ELASTIC COLLISION ASSUMPTION HERE
+		if (ball.pos.y > canvas.height ||
+	      ball.pos.y < 0) {
+	      ball.vel.y = -ball.vel.y;
+	    }
+	    if (ball.pos.x > canvas.width ||
+	      ball.pos.x < 0) {
+	      ball.vel.x = -ball.vel.x;
+	    }
+	    ctx.fillStyle = 'gray';
+	    ctx.font = "20px Times";
+	    ctx.fillText("Force: F = -kx - bv", 200, 50);
+		ctx.fillText("γ = "+Math.round(gamma*100000)/100000, 10, 50);
+		ctx.fillText("v = "+Math.abs(Math.round(ball.vel.y/c*1000)/1000) + "c", 10, 70);
+		ctx.fillStyle = 'red';
+		ctx.fillText("c = " +c/1000+ "m/s", 10, 90);
+		ctx.fillText("k = " + k + " N/m", 10, 110);
+		ctx.fillText("b = " + b + " Ns/m", 10, 130);
+		ctx.fillText("You can change c, k, and b! Press ctrl + shift + J on Chrome to open", 10,275);
+		ctx.fillText("console. Type 'c, k, or b=###'. i.e. 'c=5' sets c to 5m/s", 10,295)
+		ctx.fillStyle = 'gray';
+		ctx.fillText("Spring has equilibrium length of 100cm; (c) Thomas Spradling", 10, 20);
+	    var length = ball.pos.add(springPlace.mult(-1)).mag();
+	    ctx.beginPath();
+	    ctx.lineWidth = 7-0.04*length;
+		ctx.moveTo(springPlace.x, springPlace.y);
+		ctx.lineTo(ball.pos.x, ball.pos.y);
+		ctx.strokeStyle = 'gray';
+		ctx.stroke();
+		ctx.beginPath();
+		ctx.lineWidth = 1;
+		ctx.moveTo(0, 300);
+		ctx.lineTo(600, 300);
+		ctx.moveTo(98, 550);
+		ctx.lineTo(500, 550);
+		ctx.moveTo(98, 550);
+		ctx.lineTo(98, 350);
+		ctx.strokeStyle = 'black';
+		ctx.stroke();
+	    useForce(ball, customForce(ball.vel, ball.pos));
+	}
+	//var littleT = 0;
+	var vec = new Vector(ball.pos.x - 198,ball.pos.y+250);
+	function write() {
+		var newVec = new Vector(ball.pos.x - 198, ball.pos.y+250);
+		ctx.beginPath();
+		ctx.lineWidth = 2;
+		ctx.moveTo(vec.x, vec.y);
+		ctx.lineTo(newVec.x, newVec.y);
+		ctx.strokeStyle = 'black';
+		ctx.stroke();
+		//littleT += 2;
+		var imageData = ctx.getImageData(100, 350, 500, 540);
+		ctx.putImageData(imageData, 101, 350);
+		//ctx.clearRect(0, canvas.height/2, canvas.width, canvas.height);
+		window.requestAnimationFrame(write);
+		vec = newVec;
+	}
+	ball.draw();
+	window.requestAnimationFrame(draw);
+
+	write();
+	window.requestAnimationFrame(write);
+</script>
+</html>
